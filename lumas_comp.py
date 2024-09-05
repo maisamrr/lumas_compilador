@@ -1,7 +1,7 @@
 import re
 
 token_index = 0
-last_line_number = 0  # Inicializa o número da última linha como 0
+last_line_number = 0
 
 class Token:
     def __init__(self, token_type, symbol_address, line, column):
@@ -63,6 +63,7 @@ class Lexer:
         self.current_line = 1
         self.current_column = 0
         self.position = 0
+        self.start_of_line = True
 
     def add_token(self, token_type, lexeme):
         address = self.add_to_symbol_table(lexeme)
@@ -76,7 +77,6 @@ class Lexer:
 
     def tokenize(self):
         token_specification = [
-            ('LINENUMBER', r'^\d+', TokenType.LINENUMBER),  # Prioridade para números de linha
             ('LF', r'\n', TokenType.LF),           
             ('GE', r'>=', TokenType.GE),           
             ('LE', r'<=', TokenType.LE),           
@@ -105,17 +105,13 @@ class Lexer:
             
             # variável só pode ser letra única isolada
             ('VARIABLE', r'\b[a-z]\b', TokenType.VARIABLE),  
-            ('INTEGER', r'\b\d+\b', TokenType.INTEGER), 
-            
-            # espaços ignorados
-            ('SKIP', r'[ \t]+', None), 
-
-            ('MISMATCH', r'.', TokenType.ERROR),
+            ('INTEGER', r'\b\d+\b', TokenType.INTEGER),
+            ('LINENUMBER', r'^\d+', TokenType.LINENUMBER),  # Fixado para capturar números de linha
         ]
         
         token_regex = '|'.join(f'(?P<{pair[0]}>{pair[1]})' for pair in token_specification)
         
-        iterator = re.finditer(token_regex, self.code)
+        iterator = re.finditer(token_regex, self.code, re.MULTILINE)
         for match in iterator:
             kind = match.lastgroup
             lexeme = match.group(kind)
@@ -139,7 +135,15 @@ class Lexer:
             if kind == 'LF':
                 self.current_line += 1
                 self.current_column = 0
-            elif kind == 'SKIP':
+                self.start_of_line = True
+                continue
+            
+            if self.start_of_line:
+                if kind != 'LINENUMBER':
+                    raise SyntaxError(f"Erro: Esperava-se número de linha na linha {self.current_line}")
+                self.start_of_line = False
+                
+            if kind == 'SKIP':
                 continue
             elif kind == 'MISMATCH':
                 self.add_token(TokenType.ERROR, lexeme)
@@ -259,11 +263,10 @@ def parse_factor():
     
 # parse de palavras reservadas - rem, input, let, print, goto, if, end
 def parse_statement():
-    # Verifica primeiro se a linha começa com um número de linha
     token = peek_next_token()
     if token.token_type == TokenType.LINENUMBER:
         parse_line_number()
-        token = get_next_token()  # Agora que passou o número de linha, prossiga com o próximo token
+        token = get_next_token() 
     else:
         raise SyntaxError(f"Erro de sintaxe: Esperava-se um número de linha na linha {token.line}, coluna {token.column}")
 
