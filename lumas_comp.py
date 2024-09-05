@@ -1,6 +1,7 @@
 import re
 
-token_index = 0
+token_index = 0   
+last_line_number = 0
 class Token:
     def __init__(self, token_type, symbol_address, line, column):
         self.token_type = token_type
@@ -75,7 +76,7 @@ class Lexer:
     def tokenize(self, line):
         line = line.strip()
         
-        # Verificar se o número da linha é válido (só no início da linha)
+        # verificar número da linha (só no início)
         line_number_match = re.match(r'^\d+', line)
         if not line_number_match:
             raise SyntaxError("Erro: A linha não começa com um número de linha.")
@@ -160,16 +161,16 @@ class Lexer:
 
 def get_next_token():
     global token_index
-    if token_index < len(tokens):
-        token = tokens[token_index]
+    if token_index < len(lexer.tokens):
+        token = lexer.tokens[token_index]
         token_index += 1
         return token
     else:
         raise SyntaxError("Fim dos tokens inesperado")
 
 def peek_next_token():
-    if token_index < len(tokens):
-        return tokens[token_index]
+    if token_index < len(lexer.tokens):
+        return lexer.tokens[token_index]
     else:
         raise SyntaxError("Fim dos tokens inesperado")
     
@@ -178,10 +179,14 @@ def parse_line_number():
     token = get_next_token()
     if token.token_type != TokenType.LINENUMBER:
         raise SyntaxError(f"Erro de sintaxe: Esperava-se um número de linha na linha {token.line}, coluna {token.column}")
+    
     line_number = int(token.symbol_address)
-    if line_number <= last_line_number:
-        raise SyntaxError(f"Erro de sintaxe: Número de linha {line_number} fora de ordem")
-    last_line_number = line_number
+    
+    if line_number <= last_line_number: 
+        raise SyntaxError(f"Erro de sintaxe: Número de linha {line_number} fora de ordem ou repetido.")
+    
+    last_line_number = line_number  # Atualiza o último número de linha
+
 
 # parse do input
 def parse_input():
@@ -292,7 +297,6 @@ def parse_statement():
     else:
         raise SyntaxError(f"Erro de sintaxe na linha {token.line}, coluna {token.column}")
 
-# Exemplo de uso
 code = '''
 10 input x
 15 if x == 0 goto 45
@@ -300,11 +304,19 @@ code = '''
 25 if n == 0 goto 45
 '''
 
+# análise lexica
 lexer = Lexer(code)
-
 for line in code.strip().split('\n'):
     lexer.tokenize(line)
 
 # imprime tokens:
 # for token in lexer.tokens:
 #    print(token)
+
+# análise sintática
+token_index = 0
+try:
+    while token_index < len(lexer.tokens):
+        parse_statement()
+except SyntaxError as e:
+    print(e)
