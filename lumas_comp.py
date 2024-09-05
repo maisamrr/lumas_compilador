@@ -1,8 +1,6 @@
 import re
 
 token_index = 0
-last_line_number = 0
-
 class Token:
     def __init__(self, token_type, symbol_address, line, column):
         self.token_type = token_type
@@ -62,8 +60,7 @@ class Lexer:
         self.symbol_table = {}
         self.current_line = 1
         self.current_column = 0
-        self.position = 0
-        self.start_of_line = True
+        self.last_line_number = 0
 
     def add_token(self, token_type, lexeme):
         address = self.add_to_symbol_table(lexeme)
@@ -75,7 +72,22 @@ class Lexer:
             self.symbol_table[lexeme] = len(self.symbol_table) + 1
         return self.symbol_table[lexeme]
 
-    def tokenize(self):
+    def tokenize(self, line):
+        line = line.strip()
+        
+        # Verificar se o número da linha é válido (só no início da linha)
+        line_number_match = re.match(r'^\d+', line)
+        if not line_number_match:
+            raise SyntaxError("Erro: A linha não começa com um número de linha.")
+        
+        line_number = int(line_number_match.group(0))
+        if line_number <= self.last_line_number:
+            raise SyntaxError(f"Erro de numeração da linha: {line_number}. Numeração de linha repetida ou fora de ordem.")
+        self.last_line_number = line_number
+        self.add_token(TokenType.LINENUMBER, str(line_number))
+
+        line = line[len(str(line_number)):].strip()
+        
         token_specification = [
             ('LF', r'\n', TokenType.LF),           
             ('GE', r'>=', TokenType.GE),           
@@ -106,12 +118,11 @@ class Lexer:
             # variável só pode ser letra única isolada
             ('VARIABLE', r'\b[a-z]\b', TokenType.VARIABLE),  
             ('INTEGER', r'\b\d+\b', TokenType.INTEGER),
-            ('LINENUMBER', r'^\d+', TokenType.LINENUMBER),  # Fixado para capturar números de linha
         ]
         
         token_regex = '|'.join(f'(?P<{pair[0]}>{pair[1]})' for pair in token_specification)
         
-        iterator = re.finditer(token_regex, self.code, re.MULTILINE)
+        iterator = re.finditer(token_regex, line, re.MULTILINE)
         for match in iterator:
             kind = match.lastgroup
             lexeme = match.group(kind)
@@ -135,13 +146,7 @@ class Lexer:
             if kind == 'LF':
                 self.current_line += 1
                 self.current_column = 0
-                self.start_of_line = True
                 continue
-            
-            if self.start_of_line:
-                if kind != 'LINENUMBER':
-                    raise SyntaxError(f"Erro: Esperava-se número de linha na linha {self.current_line}")
-                self.start_of_line = False
                 
             if kind == 'SKIP':
                 continue
@@ -296,14 +301,10 @@ code = '''
 '''
 
 lexer = Lexer(code)
-tokens = lexer.tokenize()
 
-token_index = 0
+for line in code.strip().split('\n'):
+    lexer.tokenize(line)
 
-print("Tokens gerados pelo lexer:")
-for token in tokens:
-    print(token)
-
-print("\nIniciando análise sintática:")
-while token_index < len(tokens):
-    parse_statement()
+# imprime tokens:
+# for token in lexer.tokens:
+#    print(token)
