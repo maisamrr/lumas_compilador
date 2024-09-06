@@ -4,7 +4,7 @@ from syntatic import Parser
 def main():
     lexer = SimpleLexer()
 
-    my_simple_file = "arquivo3.txt"
+    my_simple_file = "arquivo1.txt"
     lexer.process_txt(my_simple_file)
     
     for token in lexer.tokens:

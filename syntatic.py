@@ -90,14 +90,21 @@ class Parser:
             self.error_statement("Espera-se uma variável após o INPUT")
 
     def expression(self): # variavel, inteiro ou operacao
-        if self.current_token.token_type in (TokenType.VARIABLE, TokenType.INTEGER):
+        if self.current_token.token_type == TokenType.SUBTRACT: # resolve -1
+            self.advance_next_token()
+            if self.current_token.token_type == TokenType.INTEGER and self.current_token.symbol_address == '1':
+                self.advance_next_token()
+            else:
+                self.error_statement("Espera-se o número '1' após '-'")
+        
+        elif self.current_token.token_type in (TokenType.VARIABLE, TokenType.INTEGER):
             self.advance_next_token()
             if self.current_token.token_type in (TokenType.ADD, TokenType.SUBTRACT, TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.MODULO):
                 self.advance_next_token()
                 self.expression()
         else:
             self.error_statement("Expressão inválida")
-    
+
     def end_statement(self):
         self.advance_next_token()
         if self.current_token is not None:
