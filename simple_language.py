@@ -49,4 +49,5 @@ class TokenType:
     
     # outros
     ERROR = 99
+    INVALID_VARIABLE = 99
 

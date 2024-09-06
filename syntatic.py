@@ -133,7 +133,7 @@ class Parser:
         self.advance_next_token()
         if self.current_token is not None:
             self.error_statement("Não deve haver nenhum token após o END")
-        return
+        self.semantic_analyzer.check_end_statement(self.current_token)
             
     def check_line_number(self):
         if self.current_token.token_type == TokenType.LINENUMBER:
