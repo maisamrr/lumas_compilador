@@ -1,12 +1,13 @@
 from simple_language import TokenType
-
+from semantic import SemanticAnalyzer
 class Parser:
-    def __init__(self, tokens):
+    def __init__(self, tokens, semantic_analyzer):
         self.tokens = tokens
         self.current_token = None
         self.pos = -1
         self.advance_next_token()
-        self.last_line_number = 0 
+        self.last_line_number = 0
+        self.semantic_analyzer = semantic_analyzer
 
     def advance_next_token(self):
         self.pos += 1
@@ -44,15 +45,25 @@ class Parser:
     def let_statement(self): 
         self.advance_next_token()
         if self.current_token.token_type == TokenType.VARIABLE:
+            variable_name = self.current_token.symbol_address
+
+            if variable_name in self.semantic_analyzer.symbol_table:
+                # variavel ja declarada
+                self.semantic_analyzer.check_variable_assignment(variable_name, self.current_token.line, self.current_token.column)
+            else:
+                # variavel declarada pela 1a vez
+                self.semantic_analyzer.declare_variable(variable_name, self.current_token.line, self.current_token.column)
+            
             self.advance_next_token()
             if self.current_token.token_type == TokenType.ASSIGNMENT:
                 self.advance_next_token()
                 self.expression()
+                self.semantic_analyzer.initialize_variable(variable_name, self.current_token.line, self.current_token.column)
             else:
                 self.error_statement("Esperado '=' depois da variável")
         else:
             self.error_statement("Deve haver uma variável após LET")
-    
+
     def error_statement(self, message):
         raise Exception(f"Erro de sintaxe: {message} na linha {self.current_token.line}, coluna {self.current_token.column}")
 
@@ -85,19 +96,32 @@ class Parser:
     def input_statement(self):
         self.advance_next_token()  
         if self.current_token.token_type == TokenType.VARIABLE:
+            variable_name = self.current_token.symbol_address
+            if variable_name in self.semantic_analyzer.symbol_table:
+                self.semantic_analyzer.check_variable_assignment(variable_name, self.current_token.line, self.current_token.column)
+            else:
+                self.semantic_analyzer.declare_variable(variable_name, self.current_token.line, self.current_token.column)
+                self.semantic_analyzer.initialize_variable(variable_name, self.current_token.line, self.current_token.column)
             self.advance_next_token() 
         else:
             self.error_statement("Espera-se uma variável após o INPUT")
 
     def expression(self): # variavel, inteiro ou operacao
-        if self.current_token.token_type == TokenType.SUBTRACT: # resolve -1
+        if self.current_token.token_type == TokenType.SUBTRACT:
             self.advance_next_token()
             if self.current_token.token_type == TokenType.INTEGER and self.current_token.symbol_address == '1':
                 self.advance_next_token()
             else:
                 self.error_statement("Espera-se o número '1' após '-'")
-        
-        elif self.current_token.token_type in (TokenType.VARIABLE, TokenType.INTEGER):
+        elif self.current_token.token_type == TokenType.VARIABLE:
+            variable_name = self.current_token.symbol_address
+            self.semantic_analyzer.check_variable_usage(variable_name, self.current_token.line, self.current_token.column)
+            self.advance_next_token()
+
+            if self.current_token.token_type in (TokenType.ADD, TokenType.SUBTRACT, TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.MODULO):
+                self.advance_next_token()
+                self.expression()
+        elif self.current_token.token_type == TokenType.INTEGER:
             self.advance_next_token()
             if self.current_token.token_type in (TokenType.ADD, TokenType.SUBTRACT, TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.MODULO):
                 self.advance_next_token()
