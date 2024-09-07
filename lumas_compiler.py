@@ -4,7 +4,7 @@ from semantic import SemanticAnalyzer
 
 def main():
     lexer = SimpleLexer()
-    my_simple_file = "arquivo1.txt"
+    my_simple_file = "teste.txt"
     lexer.process_txt(my_simple_file)
     
     print("Tokens gerados:")

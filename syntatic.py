@@ -42,49 +42,82 @@ class Parser:
         else:
             self.error_statement(f"Declaração inválida: '{self.current_token.symbol_address}'")
 
-    def let_statement(self): 
+    def let_statement(self):
         self.advance_next_token()
-        if self.current_token.token_type == TokenType.VARIABLE:
+        
+        if self.current_token and self.current_token.token_type == TokenType.VARIABLE:
             variable_name = self.current_token.symbol_address
 
+            variable_line = self.current_token.line
+            variable_column = self.current_token.column
+
             if variable_name in self.semantic_analyzer.symbol_table:
-                # variavel ja declarada
-                self.semantic_analyzer.check_variable_assignment(variable_name, self.current_token.line, self.current_token.column)
+                self.semantic_analyzer.check_variable_assignment(variable_name, variable_line, variable_column)
             else:
-                # variavel declarada pela 1a vez
-                self.semantic_analyzer.declare_variable(variable_name, self.current_token.line, self.current_token.column)
+                self.semantic_analyzer.declare_variable(variable_name, variable_line, variable_column)
             
             self.advance_next_token()
-            if self.current_token.token_type == TokenType.ASSIGNMENT:
+
+            if self.current_token and self.current_token.token_type == TokenType.ASSIGNMENT:
                 self.advance_next_token()
                 self.expression()
                 self.semantic_analyzer.initialize_variable(variable_name, self.current_token.line, self.current_token.column)
             else:
-                self.error_statement("Esperado '=' depois da variável")
+                self.error_statement(f"Esperado '=' depois da variável '{variable_name}'", variable_line, variable_column)
         else:
-            self.error_statement("Deve haver uma variável após LET")
-
-    def error_statement(self, message):
-        raise Exception(f"Erro de sintaxe: {message} na linha {self.current_token.line}, coluna {self.current_token.column}")
-
-    def if_statement(self):
-        self.advance_next_token() 
-        self.relational_expression()
-        if self.current_token.token_type == TokenType.GOTO:
-            self.advance_next_token()
-            if self.current_token.token_type == TokenType.INTEGER:
-                self.advance_next_token()
-            else:
-                self.error_statement("Esperado número de linha após GOTO")
-        else:
-            self.error_statement("Esperado GOTO após a condição")
+            self.error_statement("Deve haver uma variável após let")
     
+    def error_statement(self, message, line=None, column=None):
+        if line is None or column is None:
+            if self.current_token is not None:
+                line = self.current_token.line
+                column = self.current_token.column
+            else:
+                raise Exception(f"Erro de sintaxe: {message} no final do arquivo.")
+        
+        raise Exception(f"Erro de sintaxe: {message} na linha {line}, coluna {column}")
+    
+    def if_statement(self):
+        if_line = self.current_token.line
+        if_column = self.current_token.column
+
+        self.advance_next_token()  
+
+        if self.current_token.token_type in (TokenType.VARIABLE, TokenType.INTEGER):
+            variable_line = self.current_token.line
+            variable_column = self.current_token.column
+
+            self.advance_next_token()
+
+            if self.current_token.token_type in (TokenType.EQ, TokenType.NE, TokenType.GT, TokenType.LT, TokenType.GE, TokenType.LE):
+                self.advance_next_token() 
+
+                if self.current_token.token_type in (TokenType.VARIABLE, TokenType.INTEGER):
+                    self.advance_next_token() 
+
+                    if self.current_token.token_type == TokenType.GOTO:
+                        self.advance_next_token() 
+                        
+                        if self.current_token.token_type == TokenType.INTEGER:
+                            self.advance_next_token()  
+                        else:
+                            self.error_statement("Esperado número de linha após 'goto'", if_line, if_column)
+                    else:
+                        self.error_statement("Esperado 'goto' após a condição", if_line, if_column)
+                else:
+                    self.error_statement("Espera-se uma variável ou inteiro após o operador relacional", if_line, if_column)
+            else:
+                self.error_statement("Espera-se um operador relacional", variable_line, variable_column)
+        else:
+            self.error_statement("Espera-se uma variável ou inteiro após 'if'", if_line, if_column)
+
+
     def goto_statement(self):
         self.advance_next_token()
         if self.current_token.token_type == TokenType.INTEGER:
             self.advance_next_token()
         else:
-            self.error_statement("Espera-se um número de linha após o GOTO")
+            self.error_statement("Espera-se um número de linha após o goto")
 
     def print_statement(self):
         self.advance_next_token()
@@ -94,17 +127,21 @@ class Parser:
         self.advance_next_token()
         
     def input_statement(self):
+        input_line = self.current_token.line
+        input_column = self.current_token.column
+        
         self.advance_next_token()  
-        if self.current_token.token_type == TokenType.VARIABLE:
+        
+        if self.current_token and self.current_token.token_type == TokenType.VARIABLE:
             variable_name = self.current_token.symbol_address
             if variable_name in self.semantic_analyzer.symbol_table:
                 self.semantic_analyzer.check_variable_assignment(variable_name, self.current_token.line, self.current_token.column)
             else:
                 self.semantic_analyzer.declare_variable(variable_name, self.current_token.line, self.current_token.column)
                 self.semantic_analyzer.initialize_variable(variable_name, self.current_token.line, self.current_token.column)
-            self.advance_next_token() 
+            self.advance_next_token()
         else:
-            self.error_statement("Espera-se uma variável após o INPUT")
+            self.error_statement("Espera-se uma variável após o input", input_line, input_column)
 
     def expression(self): # variavel, inteiro ou operacao
         if self.current_token.token_type == TokenType.SUBTRACT:
@@ -128,11 +165,16 @@ class Parser:
                 self.expression()
         else:
             self.error_statement("Expressão inválida")
-
+    
     def end_statement(self):
-        self.advance_next_token()
+        end_line = self.current_token.line
+        end_column = self.current_token.column
+        
+        self.advance_next_token()  
+        
         if self.current_token is not None:
-            self.error_statement("Não deve haver nenhum token após o END")
+            self.error_statement("Não deve haver nenhum token após o end", end_line, end_column)
+
         self.semantic_analyzer.check_end_statement(self.current_token)
             
     def check_line_number(self):

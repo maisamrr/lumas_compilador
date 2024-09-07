@@ -5,7 +5,7 @@ class SimpleLexer:
     def __init__(self):
         self.tokens = []
         self.symbol_table = {}
-        self.current_line = 1
+        self.current_line = 0
         self.current_column = 0
         self.last_line_number = 0
     
@@ -26,24 +26,20 @@ class SimpleLexer:
             if line.strip() == '':
                 self.current_line += 1
                 continue
-            
-            tokens = line.split()
-            if len(tokens) == 0:
-                self.current_line += 1
-                continue
 
-            if not tokens[0].isdigit() or int(tokens[0]) <= 0:
+            line_number_match = re.match(r'^\d+', line)
+            if not line_number_match:
                 raise ValueError(f"Erro: linha {self.current_line} não começa com um número de linha válido.")
             
-            line_number = int(tokens[0])
+            line_number = int(line_number_match.group())
             self.tokens.append(Token(TokenType.LINENUMBER, line_number, self.current_line, 0))
 
-            rest_of_line = ' '.join(tokens[1:])
+            rest_of_line = line[line_number_match.end():]
             self.tokenize(rest_of_line)
 
             self.current_line += 1
-            self.current_column = 0 
-
+            self.current_column = 0
+ 
     def tokenize(self, line):
         token_specification = [
             ('GE', r'>='),           
@@ -58,7 +54,7 @@ class SimpleLexer:
             ('MULTIPLY', r'\*'),    
             ('DIVIDE', r'/'),  
             ('MODULO', r'%'),   
-
+            
             ('REM', r'\brem\b'),            
             ('INPUT', r'\binput\b'),
             ('LET', r'\blet\b'),
@@ -66,12 +62,17 @@ class SimpleLexer:
             ('GOTO', r'\bgoto\b'),
             ('IF', r'\bif\b'),
             ('END', r'\bend\b'),  
-                        
-            ('INVALID_UPPERCASE', r'\b[A-Z]\b'),  
+            
+            # Variables and integers
             ('VARIABLE', r'\b[a-z]\b'),  
-            ('INVALID_VARIABLE', r'\b[a-zA-Z]{2,}\b'), 
             ('INTEGER', r'\b\d+\b'),
-            ('SKIP', r'[ \t]+'),
+            
+            # Uppercase tokens or any token containing uppercase letters
+            ('INVALID_UPPERCASE', r'\b[A-Z]+\b'),  # Match uppercase words like 'GOTO'
+            
+            # Whitespace and invalid characters
+            ('SKIP', r'[ \t]+'),  # Match and skip spaces/tabs
+            ('INVALID_CHAR', r'[^\w\s+-/*%=<>!]'),  # Match invalid characters
         ]
         
         token_regex = '|'.join(f'(?P<{pair[0]}>{pair[1]})' for pair in token_specification)
@@ -80,20 +81,30 @@ class SimpleLexer:
         for match in line_iter:
             kind = match.lastgroup
             lexeme = match.group(kind)
-            column = match.start()
+            start_column = self.current_column
             
             if kind == 'SKIP':
+                self.current_column += len(lexeme)
                 continue
             
             elif kind == 'REM':
-                self.add_token(TokenType.REM, lexeme, column)
+                self.add_token(TokenType.REM, lexeme, start_column)
                 return
             
-            elif kind == 'MISMATCH':
-                self.add_token(TokenType.ERROR, lexeme, column)
+            elif kind == 'INVALID_UPPERCASE':
+                self.add_token(TokenType.ERROR, lexeme, start_column)
+                raise ValueError(f"Invalid uppercase token '{lexeme}' found at line {self.current_line}, column {start_column}")
+            
+            elif kind == 'INVALID_CHAR':
+                self.add_token(TokenType.ERROR, lexeme, start_column)
+                raise ValueError(f"Invalid character '{lexeme}' found at line {self.current_line}, column {start_column}")
+            
             else:
                 token_type = getattr(TokenType, kind)
-                self.add_token(token_type, lexeme, column)
+                self.add_token(token_type, lexeme, start_column)
+
+            self.current_column += len(lexeme)
+
 
     def add_token(self, token_type, lexeme, column):
         self.tokens.append(Token(token_type, lexeme, self.current_line, column))
