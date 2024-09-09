@@ -1,7 +1,7 @@
 10 input s
-15 if s == 0 goto 30
+15 if s 
 20 input n
-25 if h == 0 goto 40
+25 if n == 0 goto 40
 30 let s = s * n
 35 goto 20
 40 print s

@@ -15,8 +15,15 @@ class Parser:
             self.current_token = self.tokens[self.pos]
         else:
             self.current_token = None
+            
+    def collect_line_numbers(self):
+        for token in self.tokens:
+            if token.token_type == TokenType.LINENUMBER:
+                self.semantic_analyzer.register_line_number(token.symbol_address)
 
     def parse(self): # programa inteiro
+        self.collect_line_numbers()
+
         while self.current_token is not None:
             self.statement()
 
@@ -113,14 +120,15 @@ class Parser:
                 else:
                     self.error_statement("Espera-se uma variável ou inteiro após o operador relacional", if_line, if_column)
             else:
-                self.error_statement("Espera-se um operador relacional", variable_line, variable_column)
+                self.error_statement("Espera-se um operador relacional", if_line, if_column)
         else:
             self.error_statement("Espera-se uma variável ou inteiro após 'if'", if_line, if_column)
-
 
     def goto_statement(self):
         self.advance_next_token()
         if self.current_token.token_type == TokenType.INTEGER:
+            goto_line_number = int(self.current_token.symbol_address)
+            self.semantic_analyzer.check_goto_line(goto_line_number, self.current_token.line, self.current_token.column)
             self.advance_next_token()
         else:
             self.error_statement("Espera-se um número de linha após o goto")
@@ -171,7 +179,14 @@ class Parser:
                 self.expression()
         else:
             self.error_statement("Expressão inválida")
-    
+            
+    def check_line_number(self):
+        if self.current_token.token_type == TokenType.LINENUMBER:
+            current_line_number = self.current_token.symbol_address
+            self.semantic_analyzer.check_line_number_order(current_line_number, self.current_token.line, self.current_token.column)
+        else:
+            self.error_statement("Espera-se um número de linha no início da declaração")
+
     def end_statement(self):
         end_line = self.current_token.line
         end_column = self.current_token.column
@@ -182,15 +197,6 @@ class Parser:
             self.error_statement("Não deve haver nenhum token após o end", end_line, end_column)
 
         self.semantic_analyzer.check_end_statement(self.current_token)
-            
-    def check_line_number(self):
-        if self.current_token.token_type == TokenType.LINENUMBER:
-            current_line_number = self.current_token.symbol_address
-            if current_line_number <= self.last_line_number:
-                self.error_statement(f"Linha número {current_line_number} não é maior que {self.last_line_number}")
-            self.last_line_number = current_line_number
-        else:
-            self.error_statement("Espera-se um número de linha no início da declaração")
 
     def relational_expression(self):
         if self.current_token.token_type in (TokenType.VARIABLE, TokenType.INTEGER):

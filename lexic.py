@@ -93,11 +93,11 @@ class SimpleLexer:
             
             elif kind == 'INVALID_UPPERCASE':
                 self.add_token(TokenType.ERROR, lexeme, start_column)
-                raise ValueError(f"Invalid uppercase token '{lexeme}' found at line {self.current_line}, column {start_column}")
+                raise ValueError(f"Maiúscula inválida '{lexeme}' na linha {self.current_line}, coluna {start_column}")
             
             elif kind == 'INVALID_CHAR':
                 self.add_token(TokenType.ERROR, lexeme, start_column)
-                raise ValueError(f"Invalid character '{lexeme}' found at line {self.current_line}, column {start_column}")
+                raise ValueError(f"Caractere invalido '{lexeme}' na linha {self.current_line}, coluna {start_column}")
             
             else:
                 token_type = getattr(TokenType, kind)
