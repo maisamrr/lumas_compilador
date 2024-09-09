@@ -81,23 +81,29 @@ class Parser:
         if_line = self.current_token.line
         if_column = self.current_token.column
 
-        self.advance_next_token()  
+        self.advance_next_token() 
 
         if self.current_token.token_type in (TokenType.VARIABLE, TokenType.INTEGER):
-            variable_line = self.current_token.line
-            variable_column = self.current_token.column
+            variable_name = self.current_token.symbol_address
+
+            if self.current_token.token_type == TokenType.VARIABLE:
+                self.semantic_analyzer.check_variable_usage(variable_name, self.current_token.line, self.current_token.column)
 
             self.advance_next_token()
 
             if self.current_token.token_type in (TokenType.EQ, TokenType.NE, TokenType.GT, TokenType.LT, TokenType.GE, TokenType.LE):
-                self.advance_next_token() 
+                self.advance_next_token()  
 
                 if self.current_token.token_type in (TokenType.VARIABLE, TokenType.INTEGER):
-                    self.advance_next_token() 
+                    if self.current_token.token_type == TokenType.VARIABLE:
+                        variable_name = self.current_token.symbol_address
+                        self.semantic_analyzer.check_variable_usage(variable_name, self.current_token.line, self.current_token.column)
+
+                    self.advance_next_token()
 
                     if self.current_token.token_type == TokenType.GOTO:
-                        self.advance_next_token() 
-                        
+                        self.advance_next_token()
+
                         if self.current_token.token_type == TokenType.INTEGER:
                             self.advance_next_token()  
                         else:
