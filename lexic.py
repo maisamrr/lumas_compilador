@@ -61,18 +61,16 @@ class SimpleLexer:
             ('PRINT', r'\bprint\b'),
             ('GOTO', r'\bgoto\b'),
             ('IF', r'\bif\b'),
-            ('END', r'\bend\b'),  
+            ('END', r'\bend\b'),
+            ('LF', r'\n'), 
             
-            # Variables and integers
             ('VARIABLE', r'\b[a-z]\b'),  
             ('INTEGER', r'\b\d+\b'),
             
-            # Uppercase tokens or any token containing uppercase letters
-            ('INVALID_UPPERCASE', r'\b[A-Z]+\b'),  # Match uppercase words like 'GOTO'
+            ('INVALID_UPPERCASE', r'\b[A-Z]+\b'),  
             
-            # Whitespace and invalid characters
-            ('SKIP', r'[ \t]+'),  # Match and skip spaces/tabs
-            ('INVALID_CHAR', r'[^\w\s+-/*%=<>!]'),  # Match invalid characters
+            ('SKIP', r'[ \t]+'), 
+            ('INVALID_CHAR', r'[^\w\s+-/*%=<>!]'),
         ]
         
         token_regex = '|'.join(f'(?P<{pair[0]}>{pair[1]})' for pair in token_specification)
@@ -86,7 +84,11 @@ class SimpleLexer:
             if kind == 'SKIP':
                 self.current_column += len(lexeme)
                 continue
-            
+            elif kind == 'LF':
+                self.add_token(TokenType.LF, lexeme, start_column)
+                self.current_line += 1
+                self.current_column = 0 
+                continue
             elif kind == 'REM':
                 self.add_token(TokenType.REM, lexeme, start_column)
                 return

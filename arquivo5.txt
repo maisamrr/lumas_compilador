@@ -1,5 +1,5 @@
 10 input s
-15 if s 
+15 if s == 0 goto 40
 20 input n
 25 if n == 0 goto 40
 30 let s = s * n

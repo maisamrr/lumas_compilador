@@ -1,4 +1,4 @@
-from simple_language import TokenType
+from simple_language import TokenType, Token
 from semantic import SemanticAnalyzer
 class Parser:
     def __init__(self, tokens, semantic_analyzer):
@@ -8,6 +8,7 @@ class Parser:
         self.advance_next_token()
         self.last_line_number = 0
         self.semantic_analyzer = semantic_analyzer
+        self.operation_count = 0 
 
     def advance_next_token(self):
         self.pos += 1
@@ -67,7 +68,10 @@ class Parser:
 
             if self.current_token and self.current_token.token_type == TokenType.ASSIGNMENT:
                 self.advance_next_token()
+
+                self.operation_count = 0
                 self.expression()
+
                 self.semantic_analyzer.initialize_variable(variable_name, self.current_token.line, self.current_token.column)
             else:
                 self.error_statement(f"Esperado '=' depois da variável '{variable_name}'", variable_line, variable_column)
@@ -157,29 +161,31 @@ class Parser:
         else:
             self.error_statement("Espera-se uma variável após o input", input_line, input_column)
 
-    def expression(self): # variavel, inteiro ou operacao
+    def expression(self):
         if self.current_token.token_type == TokenType.SUBTRACT:
             self.advance_next_token()
-            if self.current_token.token_type == TokenType.INTEGER and self.current_token.symbol_address == '1':
+            if self.current_token.token_type == TokenType.INTEGER:
+                negative_number = f"-{self.current_token.symbol_address}"
+                self.add_negative_token(negative_number)
                 self.advance_next_token()
             else:
-                self.error_statement("Espera-se o número '1' após '-'")
-        elif self.current_token.token_type == TokenType.VARIABLE:
-            variable_name = self.current_token.symbol_address
-            self.semantic_analyzer.check_variable_usage(variable_name, self.current_token.line, self.current_token.column)
+                self.error_statement("Esperado um número após '-' para representar um número negativo")
+        elif self.current_token.token_type == TokenType.VARIABLE or self.current_token.token_type == TokenType.INTEGER:
             self.advance_next_token()
-
-            if self.current_token.token_type in (TokenType.ADD, TokenType.SUBTRACT, TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.MODULO):
-                self.advance_next_token()
-                self.expression()
-        elif self.current_token.token_type == TokenType.INTEGER:
-            self.advance_next_token()
-            if self.current_token.token_type in (TokenType.ADD, TokenType.SUBTRACT, TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.MODULO):
-                self.advance_next_token()
-                self.expression()
         else:
             self.error_statement("Expressão inválida")
-            
+
+        while self.is_operation(self.current_token.token_type):
+            self.operation_count += 1
+
+            self.check_multiple_operations()
+            self.advance_next_token()
+
+            if self.current_token.token_type == TokenType.VARIABLE or self.current_token.token_type == TokenType.INTEGER:
+                self.advance_next_token()
+            else:
+                self.error_statement("Esperado variável ou inteiro após o operador")
+
     def check_line_number(self):
         if self.current_token.token_type == TokenType.LINENUMBER:
             current_line_number = self.current_token.symbol_address
@@ -190,14 +196,13 @@ class Parser:
     def end_statement(self):
         end_line = self.current_token.line
         end_column = self.current_token.column
-        
-        self.advance_next_token()  
-        
-        if self.current_token is not None:
-            self.error_statement("Não deve haver nenhum token após o end", end_line, end_column)
+        self.advance_next_token()
 
-        self.semantic_analyzer.check_end_statement(self.current_token)
-
+        while self.current_token is not None:
+            #if self.current_token.token_type not in (TokenType.LF, TokenType.SKIP):
+                # self.error_statement("Ok!", end_line, end_column)
+            self.advance_next_token()
+        
     def relational_expression(self):
         if self.current_token.token_type in (TokenType.VARIABLE, TokenType.INTEGER):
             self.advance_next_token()
@@ -213,3 +218,13 @@ class Parser:
             self.advance_next_token()
         else:
             self.error_statement("Espera-se uma variável ou inteiro após o operador relacional")
+    
+    def is_operation(self, token_type):
+        return token_type in (TokenType.ADD, TokenType.SUBTRACT, TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.MODULO)
+
+    def check_multiple_operations(self):
+        if self.operation_count > 1:
+            self.error_statement("Mais de uma operação encontrada em uma linha. Isso não é permitido.")
+            
+    def add_negative_token(self, negative_number):
+        self.tokens.append(Token(TokenType.INTEGER, negative_number, self.current_token.line, self.current_token.column))

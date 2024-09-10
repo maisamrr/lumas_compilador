@@ -12,6 +12,7 @@ class TokenType:
     # delimitadores
     LF = 10
     ETF = 3
+    SKIP = 12
 
     # operadores
     ASSIGNMENT = 11

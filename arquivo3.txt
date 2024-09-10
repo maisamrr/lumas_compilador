@@ -1,13 +1,12 @@
-1 rem exercicio 11.09
 10 input n
-15 if n == 0 goto 65
-20 let s = n
-25 let c = 1
-30 input n
-35 if n == 0 goto 55
-40 let s = s + n
-45 let c = c + 1
-50 goto 30
-55 let m = s / c
-60 print m
-65 end
+15 if n <= 0 goto 50
+20 let y = 1
+25 print y
+30 let n = n - 1
+35 if n == 0 goto 60
+39 rem 40 let y = y + 2
+40 let y = y + 2 * n
+45 goto 25
+50 let y = -1
+55 print y
+60 end

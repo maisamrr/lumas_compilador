@@ -29,7 +29,7 @@ class SemanticAnalyzer:
         if variable_name not in self.symbol_table:
             raise Exception(f"Erro de semântica: variável '{variable_name}' não foi declarada. Linha: {line}, Coluna: {column}")
         
-    def check_end_statement(self, current_token):           
+    def check_end_statement(self):           
         if self.end_encountered:
             raise Exception("Erro de semântica: 'END' já foi encontrado.")
         self.end_encountered = True

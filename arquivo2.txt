@@ -1,9 +1,10 @@
-1 rem exercicio 11.07
-10 input s
-15 if s == 0 goto 40
+10 input x
+15 if x == 0 goto 45
 20 input n
-25 if n == 0 goto 40
-30 let s = s * n
-35 goto 20
-40 print s
-45 end
+24 rem 25 if n == 0 goto 45
+25 if n = 0 goto 45
+30 if n <= x goto 20
+35 let x = n
+40 goto 20
+45 print x
+50 end
